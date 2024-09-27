@@ -1,0 +1,17 @@
+
+import os
+
+# Izzy Moonbow root directory
+IZZY_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# Telegram Bot Token
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+# ByBit API Key
+BYBIT_API_KEY = os.getenv("BYBIT_API_KEY")
+
+# ByBit API Secret
+BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET")
+
+# Database file path
+DATABASE = os.path.join(IZZY_ROOT, "cache", "izzy.db")
