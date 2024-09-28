@@ -1,4 +1,3 @@
-
 import os
 
 # Izzy Moonbow root directory
@@ -13,5 +12,11 @@ BYBIT_API_KEY = os.getenv("BYBIT_API_KEY")
 # ByBit API Secret
 BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET")
 
-# Database file path
-DATABASE = os.path.join(IZZY_ROOT, "cache", "izzy.db")
+DB_CONFIG = {
+    'user': os.getenv('DB_USER', 'izzy'),
+    'password': os.getenv('DB_PASSWORD', 'db_password'),
+    'host': os.getenv('DB_HOST', 'db'),
+    'database': os.getenv('DB_NAME', 'izzy_db')
+}
+
+SECRET_KEY = "secret_key"
