@@ -30,11 +30,15 @@ def get_symbols():
     session = Session()
     try:
         symbols = session.query(Symbol).all()
-        return jsonify([{
-            'symbol': symbol.symbol,
-            'icon_class': symbol.icon_class,
-            'last_mark_price': symbol.last_mark_price
-        } for symbol in symbols])
+        result = []
+        for symbol in symbols:
+            print(f"Symbol: {symbol.symbol}, Last Mark Price: {symbol.last_mark_price}")  # Debug print
+            result.append({
+                'symbol': symbol.symbol,
+                'icon_class': symbol.icon_class,
+                'last_mark_price': float(symbol.last_mark_price) if symbol.last_mark_price is not None else None
+            })
+        return jsonify(result)
     finally:
         session.close()
 
@@ -43,10 +47,11 @@ def get_symbol(symbol_name):
     try:
         symbol = session.get(Symbol, symbol_name)
         if symbol:
+            print(f"Symbol: {symbol.symbol}, Last Mark Price: {symbol.last_mark_price}")  # Debug print
             return jsonify({
                 'symbol': symbol.symbol,
                 'icon_class': symbol.icon_class,
-                'last_mark_price': symbol.last_mark_price
+                'last_mark_price': float(symbol.last_mark_price) if symbol.last_mark_price is not None else None
             })
         else:
             return jsonify({'error': 'Symbol not found'}), 404
