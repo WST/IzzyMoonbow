@@ -7,27 +7,19 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# Install system dependencies required for cryptography and other packages
+# Install system dependencies and Python packages
 RUN apt-get update && apt-get install -y \
     gcc \
     libffi-dev \
     libssl-dev \
-    supervisor
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir cryptography
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Make the startup script executable
+RUN chmod +x start.sh
 
-# Explicitly install cryptography
-RUN pip install --no-cache-dir cryptography
-
-# Copy Supervisor configuration file
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Make port 5000 available to the world outside this container
+# Expose the port the app runs on
 EXPOSE 5000
 
-# Define environment variable
-ENV NAME IzzyMoonbow
-
-# Run Supervisor when the container launches
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Run the startup script when the container launches
+CMD ["./start.sh"]
