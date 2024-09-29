@@ -3,13 +3,21 @@
 # Function to start the bot
 start_bot() {
     echo "Starting Telegram bot..."
-    python izzy.py
+    while true; do
+        python izzy.py
+        echo "Bot crashed. Restarting in 5 seconds..."
+        sleep 5
+    done
 }
 
 # Function to start the API
 start_api() {
     echo "Starting API..."
-    python api.py
+    while true; do
+        python api.py
+        echo "API crashed. Restarting in 5 seconds..."
+        sleep 5
+    done
 }
 
 # Check environment variables and start components accordingly

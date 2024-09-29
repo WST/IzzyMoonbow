@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 from flask import Flask, jsonify, request
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from lib.models import Base, Symbol
 from settings import DB_CONFIG, SECRET_KEY
+from lib.db_utils import wait_for_db
 import click
 
 app = Flask(__name__)
@@ -12,7 +12,7 @@ app.config['SECRET_KEY'] = SECRET_KEY
 
 # Configure MySQL connection
 db_url = f"mysql+pymysql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}/{DB_CONFIG['database']}"
-engine = create_engine(db_url)
+engine = wait_for_db(db_url)
 Session = sessionmaker(bind=engine)
 
 @app.route('/api/glitter.jsp', methods=['GET'])

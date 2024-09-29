@@ -17,7 +17,7 @@ from sqlalchemy.orm import sessionmaker
 from lib.models import Base, User, ChatGroup, Symbol
 
 class IzzyBot:
-    def __init__(self, settings):
+    def __init__(self, settings, engine):
         self.settings = settings
         self.logger = None
         self.setup_logging()
@@ -25,9 +25,7 @@ class IzzyBot:
         token = self.settings.TELEGRAM_BOT_TOKEN
         self.application = Application.builder().token(token).build()
 
-        # Set up database connection
-        db_url = f"mysql+pymysql://{self.settings.DB_CONFIG['user']}:{self.settings.DB_CONFIG['password']}@{self.settings.DB_CONFIG['host']}/{self.settings.DB_CONFIG['database']}"
-        self.engine = create_engine(db_url)
+        self.engine = engine
         self.Session = sessionmaker(bind=self.engine)
 
         self.create_tables()
