@@ -123,6 +123,40 @@ class IzzyBot:
 
     async def minute_handler(self, context: CallbackContext) -> None:
         self.exchange.update_markets()
+        await self.check_and_send_notifications(context)
+
+    async def check_and_send_notifications(self, context: CallbackContext):
+        session = self.Session()
+        try:
+            current_time = int(time.time())
+            users = session.query(User).all()
+            
+            for symbol, market in self.exchange.markets.items():
+                status_15m = market.is_price_in_extreme_range('15m')
+                status_4h = market.is_price_in_extreme_range('4h')
+                
+                if status_15m != 'normal' or status_4h != 'normal':
+                    for user in users:
+                        last_notifications = user.last_notifications or {}
+                        last_notification_time = last_notifications.get(symbol, 0)
+                        
+                        if current_time - last_notification_time > user.notification_timeout:
+                            message = self.create_notification_message(symbol, status_15m, status_4h)
+                            await context.bot.send_message(user.id, message)
+                            
+                            last_notifications[symbol] = current_time
+                            user.last_notifications = last_notifications
+                            session.commit()
+        finally:
+            session.close()
+
+    def create_notification_message(self, symbol, status_15m, status_4h):
+        message = f"Уведомление по {symbol}:\n"
+        if status_15m != 'normal':
+            message += f"15-минутный график: цена в {'верхнем' if status_15m == 'high' else 'нижнем'} диапазоне\n"
+        if status_4h != 'normal':
+            message += f"4-часовой график: цена в {'верхнем' if status_4h == 'high' else 'нижнем'} диапазоне\n"
+        return message
 
     def get_registered_users(self) -> str:
         session = self.Session()

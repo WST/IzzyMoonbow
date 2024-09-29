@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, JSON
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -11,6 +11,8 @@ class User(Base):
     nickname = Column(String(50))
     is_premium = Column(Boolean)
     last_seen = Column(Integer)
+    notification_timeout = Column(Integer, default=3600)  # таймаут в секундах, по умолчанию 1 час
+    last_notifications = Column(JSON, default={})  # словарь для хранения времени последних уведомлений по символам
 
 class ChatGroup(Base):
     __tablename__ = 'chats'
