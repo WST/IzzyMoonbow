@@ -2,3 +2,5 @@
 /__pycache__
 /lib/__pycache__
 /run.sh
+/.env
+/run-api.sh
