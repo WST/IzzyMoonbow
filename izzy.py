@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
-import settings
 from lib.izzybot import IzzyBot
+from lib.config import Config
 from lib.db_utils import wait_for_db
 
 if __name__ == "__main__":
-    db_url = f"mysql+pymysql://{settings.DB_CONFIG['user']}:{settings.DB_CONFIG['password']}@{settings.DB_CONFIG['host']}/{settings.DB_CONFIG['database']}"
-    engine = wait_for_db(db_url)
-    izzy = IzzyBot(settings, engine)
+    config = Config()
+    config.validate()  # Check if all required environment variables are set
+    engine = wait_for_db(config.get_db_url())
+    izzy = IzzyBot(config, engine)
     izzy.run()

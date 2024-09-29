@@ -1,4 +1,5 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, JSON
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, JSON, ForeignKey, Enum
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -11,8 +12,11 @@ class User(Base):
     nickname = Column(String(50))
     is_premium = Column(Boolean)
     last_seen = Column(Integer)
-    notification_timeout = Column(Integer, default=3600)  # таймаут в секундах, по умолчанию 1 час
-    last_notifications = Column(JSON, default={})  # словарь для хранения времени последних уведомлений по символам
+    notification_timeout = Column(Integer, default=3600)
+    price_notifications = Column(Boolean, default=True)
+    fvg_notifications = Column(Boolean, default=True)
+    oi_notifications = Column(Boolean, default=True)
+    notifications = relationship("NotificationHistory", back_populates="user")
 
 class ChatGroup(Base):
     __tablename__ = 'chats'
@@ -32,5 +36,16 @@ class Symbol(Base):
     def __repr__(self):
         return f'<Symbol {self.symbol}>'
 
+class NotificationHistory(Base):
+    __tablename__ = 'notification_history'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    symbol = Column(String(20), ForeignKey('symbols.symbol'))
+    timestamp = Column(Integer)
+    notification_type = Column(Enum('price', 'fvg', 'oi'), nullable=False)
+    price_status = Column(Enum('high', 'low'), nullable=True)
+    timeframe = Column(Enum('15m', '4h'), nullable=True)
+    user = relationship("User", back_populates="notifications")
+
 # Add this line at the end of the file to export Base
-__all__ = ['Base', 'User', 'ChatGroup', 'Symbol']
+__all__ = ['Base', 'User', 'ChatGroup', 'Symbol', 'NotificationHistory']

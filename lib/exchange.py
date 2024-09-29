@@ -1,39 +1,44 @@
+import logging
 from pybit.unified_trading import HTTP
-from sqlalchemy.orm import sessionmaker
-from .models import Symbol
 from .market import Market
 
 class Exchange:
-    def __init__(self, izzy, api_key: str, api_secret: str):
-        self.izzy = izzy
+    def __init__(self, symbol_manager, api_key: str, api_secret: str):
+        self.symbol_manager = symbol_manager
         self.session = HTTP(api_key=api_key, api_secret=api_secret, testnet=False)
         self.markets = {}
-        self.initialize_markets()
-        self.db_session = sessionmaker(bind=self.izzy.engine)()
-
-    def initialize_markets(self):
-        symbols = self.izzy.get_symbols()
-        for symbol in symbols:
-            market = Market(self, symbol)
-            self.markets[symbol] = market
+        self.logger = logging.getLogger(__name__)
+        self.update_markets()
+        self.logger.info(f"Exchange initialized with {len(self.markets)} markets")
 
     def update_markets(self):
-        symbols = self.izzy.get_symbols()
+        symbols = self.symbol_manager.get_symbols()
         for symbol in symbols:
-            market = self.markets.get(symbol)
-            if market:
-                market.update(self.session)
-                mark_price = market.get_mark_price()
-                if mark_price is not None:
-                    self.update_symbol_price(symbol, mark_price)
+            if symbol not in self.markets:
+                self.markets[symbol] = Market(self, symbol)
+            self.markets[symbol].update(self.session)
+        
+        # Remove markets for symbols that no longer exist
+        self.markets = {symbol: market for symbol, market in self.markets.items() if symbol in symbols}
 
-    def update_symbol_price(self, symbol: str, price: float):
-        db_symbol = self.db_session.query(Symbol).get(symbol)
-        if db_symbol:
-            db_symbol.last_mark_price = price
-            self.db_session.commit()
-        else:
-            print(f"Symbol {symbol} not found in database")
+    def get_market(self, symbol: str) -> Market:
+        return self.markets.get(symbol)
 
-    def __del__(self):
-        self.db_session.close()
+    def get_mark_price(self, symbol: str) -> float:
+        market = self.get_market(symbol)
+        if market:
+            return market.get_mark_price()
+        return None
+
+    def get_kline(self, symbol: str, interval: str, limit: int):
+        try:
+            response = self.session.get_kline(
+                category="linear",
+                symbol=symbol,
+                interval=interval,
+                limit=limit
+            )
+            return response['result']['list']
+        except Exception as e:
+            self.logger.error(f"Error fetching kline data for {symbol}: {str(e)}")
+            return []
