@@ -1,4 +1,4 @@
-# Use Python 3.12 slim image as the base
+# Use Python 3.12 slim image as the base (this is already amd64 by default on most systems)
 FROM python:3.12-slim
 
 # Set the working directory in the container
