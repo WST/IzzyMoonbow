@@ -15,6 +15,7 @@ db_url = f"mysql+pymysql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFI
 engine = wait_for_db(db_url)
 Session = sessionmaker(bind=engine)
 
+
 @app.route('/api/glitter.jsp', methods=['GET'])
 def api_handler():
     call = request.args.get('call')
@@ -25,6 +26,7 @@ def api_handler():
         return get_symbol(symbol)
     else:
         return jsonify({'error': 'Invalid call parameter'}), 400
+
 
 def get_symbols():
     session = Session()
@@ -42,6 +44,7 @@ def get_symbols():
     finally:
         session.close()
 
+
 def get_symbol(symbol_name):
     session = Session()
     try:
@@ -58,6 +61,7 @@ def get_symbol(symbol_name):
     finally:
         session.close()
 
+
 def insert_initial_symbols():
     session = Session()
     try:
@@ -71,16 +75,17 @@ def insert_initial_symbols():
             ('SUIUSDT', 'fas fa-cube'),
             ('WIFUSDT', 'fas fa-wifi')
         ]
-        
+
         for symbol_data in symbols:
             existing_symbol = session.get(Symbol, symbol_data[0])
             if not existing_symbol:
                 new_symbol = Symbol(symbol=symbol_data[0], icon_class=symbol_data[1])
                 session.add(new_symbol)
-        
+
         session.commit()
     finally:
         session.close()
+
 
 @app.cli.command("init-db")
 def initialize_database():
@@ -88,11 +93,13 @@ def initialize_database():
     Base.metadata.create_all(engine)
     click.echo('Initialized the database.')
 
+
 @app.cli.command("insert-symbols")
 def insert_symbols_command():
     """Insert initial symbols."""
     insert_initial_symbols()
     click.echo('Inserted initial symbols.')
+
 
 if __name__ == '__main__':
     Base.metadata.create_all(engine)
