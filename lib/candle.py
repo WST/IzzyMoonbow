@@ -15,7 +15,7 @@ class Candle:
         self.next: Optional['Candle'] = None
 
     def is_bullish(self) -> bool:
-        return self.close > self.open
+        return self.close >= self.open
 
     def get_fvg(self) -> Optional[FVG]:
         if not (self.prev and self.next):
