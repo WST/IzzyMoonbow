@@ -1,16 +1,19 @@
 import logging
 import pandas as pd
-import numpy as np
-from typing import List
+from typing import List, Optional
+from .chart_generator import ChartGenerator
+from .fvg import FVG
+from .chart import Chart
 
 class Market:
-    def __init__(self, exchange, symbol: str, max_candles: int = 100):
+    def __init__(self, exchange, symbol: str):
         self.exchange = exchange
         self.symbol = symbol
-        self.max_candles = max_candles
+        self.max_candles = 100
         self.candles_15m = pd.DataFrame()
         self.candles_4h = pd.DataFrame()
         self.logger = logging.getLogger(__name__)
+        self.chart_generator = ChartGenerator()
 
     def update(self, session):
         self.logger.info(f"Updating market for {self.symbol}")
@@ -82,3 +85,32 @@ class Market:
             return f"{hours} hours {minutes} minutes"
         else:
             return f"{minutes} minutes"
+
+    def get_chart(self, timeframe: str) -> Optional[Chart]:
+        candles = self.get_candles(timeframe)
+        if candles.empty:
+            self.logger.error(f"No candle data for {self.symbol} on {timeframe} timeframe")
+            return None
+
+        time_range = self.get_chart_time_range(timeframe)
+        title = f"{self.symbol} - {timeframe} ({time_range})"
+        
+        try:
+            chart = self.chart_generator.generate_candlestick_chart(candles, title)
+            return chart
+        except Exception as e:
+            self.logger.exception(f"Error generating chart for {self.symbol}")
+            return None
+
+    def get_chart_with_fvgs(self, timeframe: str) -> Optional[Chart]:
+        chart = self.get_chart(timeframe)
+        if chart is None:
+            return None
+
+        fvgs = self.get_fvgs(timeframe)
+        chart.draw_fvgs(fvgs)
+        return chart
+
+    def get_fvgs(self, timeframe: str) -> List[FVG]:
+        # Implement FVG detection logic here
+        pass

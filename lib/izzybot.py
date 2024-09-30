@@ -142,11 +142,17 @@ class IzzyBot:
             if len(parts) >= 4:
                 symbol, timeframe = parts[2], parts[3]
                 try:
-                    chart = self.notification_manager.create_chart(symbol, timeframe)
+                    market = self.exchange.get_market(symbol)
+                    if market is None:
+                        await query.message.reply_text(f"Извините, не удалось найти рынок для {symbol}.")
+                        return
+
+                    chart = market.get_chart(timeframe)
                     if chart is None:
                         await query.message.reply_text(f"Извините, не удалось создать график для {symbol} ({timeframe}). Попробуйте позже.")
                     else:
-                        await query.message.reply_photo(photo=chart, caption=f"График для {symbol} ({timeframe})")
+                        chart_bytes = chart.save()
+                        await query.message.reply_photo(photo=chart_bytes, caption=f"График для {symbol} ({timeframe})")
                 except Exception as e:
                     self.logger.exception(f"Error creating chart for symbol {symbol}, timeframe: {timeframe}")
                     await query.message.reply_text(f"Произошла ошибка при создании графика для {symbol} ({timeframe}): {str(e)}")

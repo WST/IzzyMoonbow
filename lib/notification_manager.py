@@ -2,7 +2,6 @@ import logging
 import time
 from telegram.ext import CallbackContext
 from lib.models import User, NotificationHistory, Symbol
-from .chart_generator import ChartGenerator
 from sqlalchemy import and_
 
 class NotificationManager:
@@ -10,7 +9,6 @@ class NotificationManager:
         self.exchange = exchange
         self.Session = session_maker
         self.logger = logging.getLogger(__name__)
-        self.chart_generator = ChartGenerator()
 
     async def check_and_send_notifications(self, context: CallbackContext):
         session = self.Session()
@@ -69,8 +67,17 @@ class NotificationManager:
 
     async def send_price_notification(self, context, user, symbol, status, timeframe):
         message = self.create_price_notification_message(symbol, status, timeframe)
-        chart = self.create_chart(symbol, timeframe)
-        await context.bot.send_photo(user.id, photo=chart, caption=message)
+        market = self.exchange.get_market(symbol)
+        if market:
+            chart = market.get_chart(timeframe)
+            if chart:
+                chart_bytes = chart.save()
+                await context.bot.send_photo(user.id, photo=chart_bytes, caption=message)
+            else:
+                await context.bot.send_message(user.id, text=message)
+        else:
+            self.logger.error(f"Market not found for symbol: {symbol}")
+            await context.bot.send_message(user.id, text=message)
 
     def create_price_notification_message(self, symbol, status, timeframe):
         timeframe_str = "краткосрочном" if timeframe == '15m' else "долгосрочном"
@@ -101,32 +108,19 @@ class NotificationManager:
             message = f"Уведомление для {symbol}:\n"
             self.logger.warning(f"Unable to fetch mark price for {symbol}")
         
-        if status_15m != 'normal':
-            range_type = 'верхнем' if status_15m == 'high' else 'нижнем'
-            time_range = market.get_chart_time_range('15m')
-            message += f"Краткосрочный график ({time_range}): цена в {range_type} диапазоне\n"
-        
-        if status_4h != 'normal':
-            range_type = 'верхнем' if status_4h == 'high' else 'нижнем'
-            time_range = market.get_chart_time_range('4h')
-            message += f"Долгосрочный график ({time_range}): цена в {range_type} диапазоне\n"
+        if market:
+            if status_15m != 'normal':
+                range_type = 'верхнем' if status_15m == 'high' else 'нижнем'
+                time_range = market.get_chart_time_range('15m')
+                message += f"Краткосрочный график ({time_range}): цена в {range_type} диапазоне\n"
+            
+            if status_4h != 'normal':
+                range_type = 'верхнем' if status_4h == 'high' else 'нижнем'
+                time_range = market.get_chart_time_range('4h')
+                message += f"Долгосрочный график ({time_range}): цена в {range_type} диапазоне\n"
+        else:
+            self.logger.error(f"Market not found for symbol: {symbol}")
         
         return message
 
-    def create_chart(self, symbol: str, timeframe: str):
-        market = self.exchange.get_market(symbol)
-        if market is None:
-            self.logger.error(f"Market not found for symbol: {symbol}")
-            return None
-
-        candles = market.get_candles(timeframe)
-        if candles is None or candles.empty:
-            self.logger.error(f"No candle data for {symbol} on {timeframe} timeframe")
-            return None
-
-        time_range = market.get_chart_time_range(timeframe)
-        try:
-            return self.chart_generator.generate_candlestick_chart(candles, symbol, timeframe, time_range)
-        except Exception as e:
-            self.logger.exception(f"Error generating chart for {symbol}")
-            return None
+    # Remove the create_chart method as it's now handled by the Market class
