@@ -1,6 +1,12 @@
 import logging
+import pandas as pd
+import numpy as np
 from pybit.unified_trading import HTTP
 from .market import Market
+from .exchange_updater import ExchangeUpdater
+import threading
+import queue
+import time
 
 class Exchange:
     def __init__(self, symbol_manager, api_key: str, api_secret: str):
@@ -8,27 +14,55 @@ class Exchange:
         self.session = HTTP(api_key=api_key, api_secret=api_secret, testnet=False)
         self.markets = {}
         self.logger = logging.getLogger(__name__)
-        self.update_markets()
+        self.market_data_lock = threading.Lock()
+        self.updater = ExchangeUpdater(self)
+        self.updater.start()
         self.logger.info(f"Exchange initialized with {len(self.markets)} markets")
+        self.logger.info("ExchangeUpdater thread started")
 
     def update_markets(self):
+        try:
+            new_data = self.updater.data_queue.get_nowait()
+            with self.market_data_lock:
+                self.process_new_market_data(new_data)
+            self.logger.info("Markets updated with new data")
+        except queue.Empty:
+            self.logger.debug("No new market data available")
+
+    def process_new_market_data(self, new_data):
         symbols = self.symbol_manager.get_symbols()
-        for symbol in symbols:
-            if symbol not in self.markets:
-                self.markets[symbol] = Market(self, symbol)
-            self.markets[symbol].update(self.session)
+        for symbol, data in new_data.items():
+            if symbol in symbols:
+                if symbol not in self.markets:
+                    self.markets[symbol] = Market(self, symbol)
+                self.markets[symbol].update_from_data(data)
         
-        # Remove markets for symbols that no longer exist
         self.markets = {symbol: market for symbol, market in self.markets.items() if symbol in symbols}
 
     def get_market(self, symbol: str) -> Market:
-        return self.markets.get(symbol)
+        with self.market_data_lock:
+            return self.markets.get(symbol)
 
     def get_mark_price(self, symbol: str) -> float:
         market = self.get_market(symbol)
         if market:
             return market.get_mark_price()
         return None
+
+    def fetch_all_market_data(self):
+        symbols = self.symbol_manager.get_symbols()
+        market_data = {}
+        for symbol in symbols:
+            try:
+                kline_15m = self.get_kline(symbol, interval="15", limit=100)
+                kline_4h = self.get_kline(symbol, interval="240", limit=100)
+                market_data[symbol] = {
+                    '15m': kline_15m,
+                    '4h': kline_4h
+                }
+            except Exception as e:
+                self.logger.error(f"Error fetching data for {symbol}: {str(e)}")
+        return market_data
 
     def get_kline(self, symbol: str, interval: str, limit: int):
         try:
@@ -38,7 +72,19 @@ class Exchange:
                 interval=interval,
                 limit=limit
             )
-            return response['result']['list']
+            kline_data = response['result']['list']
+            df = pd.DataFrame(kline_data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'].astype(np.int64), unit='ms')
+            df.set_index('timestamp', inplace=True)
+            df = df.astype(float)
+            df = df.sort_index()
+            return df
         except Exception as e:
             self.logger.error(f"Error fetching kline data for {symbol}: {str(e)}")
-            return []
+            return pd.DataFrame()
+
+    def stop(self):
+        self.logger.info("Stopping ExchangeUpdater thread")
+        self.updater.stop()
+        self.updater.join()
+        self.logger.info("ExchangeUpdater thread stopped")

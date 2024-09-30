@@ -22,7 +22,7 @@ class Chart:
             style=s,
             title=self.title,
             ylabel='Price',
-            volume=False,  # Set to True if you want to include volume
+            volume=False,
             figsize=(10, 6),
             returnfig=True,
         )
@@ -41,14 +41,6 @@ class Chart:
         self.fig.subplots_adjust(left=0.05, right=0.95, top=0.8, bottom=0.05)
 
     def draw_range(self, start_price: float, end_price: float, color: str, alpha: float = 0.3):
-        """
-        Draw a colored range on the chart defined by two horizontal lines.
-        
-        :param start_price: The price level where the range starts
-        :param end_price: The price level where the range ends
-        :param color: The color of the range (e.g., 'green', 'red', '#FF5733')
-        :param alpha: The transparency of the range (0.0 to 1.0, default is 0.3)
-        """
         self.ax.axhspan(start_price, end_price, facecolor=color, alpha=alpha)
 
     def draw_fvg(self, fvg: FVG):
@@ -59,9 +51,15 @@ class Chart:
         for fvg in fvgs:
             self.draw_fvg(fvg)
 
+    def highlight_price_ranges(self, low_threshold, high_threshold):
+        if low_threshold:
+            self.ax.axhspan(self.df['low'].min(), low_threshold, facecolor='lightcoral', alpha=0.3)
+        if high_threshold:
+            self.ax.axhspan(high_threshold, self.df['high'].max(), facecolor='lightgreen', alpha=0.3)
+
     def save(self) -> BytesIO:
         buf = BytesIO()
-        self.fig.savefig(buf, format='png', dpi=300, bbox_inches='tight', pad_inches=0.1)
+        self.fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
         buf.seek(0)
         plt.close(self.fig)
         return buf

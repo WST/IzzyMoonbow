@@ -71,6 +71,7 @@ class NotificationManager:
         if market:
             chart = market.get_chart(timeframe)
             if chart:
+                chart.highlight_price_ranges(market.low_threshold, market.high_threshold)
                 chart_bytes = chart.save()
                 await context.bot.send_photo(user.id, photo=chart_bytes, caption=message)
             else:

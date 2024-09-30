@@ -5,10 +5,10 @@ from .fvg import FVG
 class Candle:
     def __init__(self, data: pd.Series):
         self.data = data
-        self.open = data['open']
-        self.high = data['high']
-        self.low = data['low']
-        self.close = data['close']
+        self.open = float(data['open'])
+        self.high = float(data['high'])
+        self.low = float(data['low'])
+        self.close = float(data['close'])
         self.timestamp = data.name
         self.prev: Optional['Candle'] = None
         self.next: Optional['Candle'] = None

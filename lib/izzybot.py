@@ -56,6 +56,9 @@ class IzzyBot:
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             level=logging.INFO
         )
+        logging.getLogger('telegram').setLevel(logging.WARNING)
+        logging.getLogger('apscheduler').setLevel(logging.WARNING)
+        logging.getLogger('httpx').setLevel(logging.WARNING)
         self.logger = logging.getLogger(__name__)
 
     def create_tables(self):
@@ -74,7 +77,7 @@ class IzzyBot:
         data = json.loads(update.effective_message.web_app_data.data)
         print(data)
         self.user_manager.update_user_info(update)
-        self.logger.warn(f"Received web app data")
+        self.logger.info("Received web app data")
         await update.message.reply_text("Настройки сохранены")
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -88,12 +91,10 @@ class IzzyBot:
         self.user_manager.update_user_info(update)
 
     async def hour_handler(self, context: CallbackContext) -> None:
-        message = self.user_manager.get_registered_users()
-        #await context.bot.send_message(84036596, message)
+        pass
 
     async def day_handler(self, context: CallbackContext) -> None:
-        message = self.user_manager.get_registered_users()
-        await context.bot.send_message(84036596, message)
+        pass
 
     async def minute_handler(self, context: CallbackContext) -> None:
         self.logger.info("Minute handler called")
@@ -101,22 +102,14 @@ class IzzyBot:
         await self.notification_manager.check_and_send_notifications(context)
         self.logger.info("Minute handler completed")
 
-    def get_registered_users(self) -> str:
-        session = self.Session()
-        try:
-            users = session.query(User).all()
-            message = f"Зарегистрированные пользователи:\n"
-            for user in users:
-                premium_str = " ✅" if user.is_premium else ''
-                message += f"{user.first_name} {user.last_name} (@{user.nickname}){premium_str}\n"
-            return message
-        finally:
-            session.close()
-
     def run(self):
-        self.logger.info("Starting bot")
-        self.application.run_polling(allowed_updates=Update.ALL_TYPES)
-        self.logger.info("Bot stopped")
+        try:
+            self.logger.info("Starting bot")
+            self.application.run_polling(allowed_updates=Update.ALL_TYPES)
+        finally:
+            self.logger.info("Stopping bot")
+            self.exchange.stop()
+            self.logger.info("Bot stopped")
 
     def get_symbols(self) -> list:
         return self.symbol_manager.get_symbols()
@@ -159,36 +152,6 @@ class IzzyBot:
             else:
                 await query.message.reply_text("Извините, произошла ошибка при обработке запроса.")
 
-    async def admin_users(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("У вас нет прав для выполнения этой команды.")
-            return
-        users = self.user_manager.get_registered_users()
-        await update.message.reply_text(users)
-
-    async def admin_symbols(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("У вас нет прав для выполнения этой команды.")
-            return
-        symbols = self.symbol_manager.get_symbols()
-        await update.message.reply_text(f"Текущие символы: {', '.join(symbols)}")
-
-    async def admin_add_symbol(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        if not self.is_admin(update.effective_user.id):
-            await update.message.reply_text("У вас нет прав для выполнения этой команды.")
-            return
-        if len(context.args) != 2:
-            await update.message.reply_text("Использование: /add_symbol <symbol> <icon_class>")
-            return
-        symbol, icon_class = context.args
-        self.symbol_manager.add_symbol(symbol, icon_class)
-        await update.message.reply_text(f"Символ {symbol} добавлен.")
-
-    def is_admin(self, user_id: int) -> bool:
-        # Implement admin check logic
-        return user_id == self.config.ADMIN_USER_ID
-
-
     def add_handlers(self):
         self.application.add_handler(CommandHandler("start", self.start))
         self.application.add_handler(CommandHandler("help", self.help_command))
@@ -207,8 +170,3 @@ class IzzyBot:
         
         self.application.add_handler(CommandHandler("chart", self.chart_command))
         self.application.add_handler(CallbackQueryHandler(self.button_callback))
-
-        # Add admin handlers
-        self.application.add_handler(CommandHandler("admin_users", self.admin_users))
-        self.application.add_handler(CommandHandler("admin_symbols", self.admin_symbols))
-        self.application.add_handler(CommandHandler("admin_add_symbol", self.admin_add_symbol))
