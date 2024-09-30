@@ -4,6 +4,7 @@ from telegram.ext import CallbackContext
 from lib.models import User, NotificationHistory, Symbol
 from sqlalchemy import and_
 
+
 class NotificationManager:
     def __init__(self, exchange, session_maker):
         self.exchange = exchange
@@ -15,28 +16,32 @@ class NotificationManager:
         try:
             current_time = int(time.time())
             users = session.query(User).all()
-            
+
             for symbol in self.exchange.markets.keys():
                 market = self.exchange.get_market(symbol)
                 if market is None:
                     self.logger.error(f"Skipping notifications for invalid symbol: {symbol}")
                     continue
-                
+
                 status_15m = market.is_price_in_extreme_range('15m')
                 status_4h = market.is_price_in_extreme_range('4h')
-                
+
                 for user in users:
                     if user.price_notifications:
-                        if status_15m != 'normal' and self.should_send_notification(user, symbol, 'price', status_15m, '15m', current_time):
+                        if status_15m != 'normal' and self.should_send_notification(user, symbol, 'price', status_15m,
+                                                                                    '15m', current_time):
                             await self.send_price_notification(context, user, symbol, status_15m, '15m')
-                            self.update_notification_history(session, user, symbol, 'price', status_15m, '15m', current_time)
-                        
-                        if status_4h != 'normal' and self.should_send_notification(user, symbol, 'price', status_4h, '4h', current_time):
+                            self.update_notification_history(session, user, symbol, 'price', status_15m, '15m',
+                                                             current_time)
+
+                        if status_4h != 'normal' and self.should_send_notification(user, symbol, 'price', status_4h,
+                                                                                   '4h', current_time):
                             await self.send_price_notification(context, user, symbol, status_4h, '4h')
-                            self.update_notification_history(session, user, symbol, 'price', status_4h, '4h', current_time)
-                    
+                            self.update_notification_history(session, user, symbol, 'price', status_4h, '4h',
+                                                             current_time)
+
                     # Add similar checks for FVG and OI notifications
-            
+
             session.commit()
         finally:
             session.close()
@@ -66,19 +71,21 @@ class NotificationManager:
         session.add(new_notification)
 
     async def send_price_notification(self, context, user, symbol, status, timeframe):
-        message = self.create_price_notification_message(symbol, status, timeframe)
         market = self.exchange.get_market(symbol)
         if market:
+            message = self.create_price_notification_message(symbol, status, timeframe)
             chart = market.get_chart(timeframe)
             if chart:
-                chart.highlight_price_ranges(market.low_threshold, market.high_threshold)
+                if timeframe == '15m':
+                    chart.highlight_price_ranges(market.low_threshold_15m, market.high_threshold_15m)
+                elif timeframe == '4h':
+                    chart.highlight_price_ranges(market.low_threshold_4h, market.high_threshold_4h)
                 chart_bytes = chart.save()
                 await context.bot.send_photo(user.id, photo=chart_bytes, caption=message)
             else:
                 await context.bot.send_message(user.id, text=message)
         else:
             self.logger.error(f"Market not found for symbol: {symbol}")
-            await context.bot.send_message(user.id, text=message)
 
     def create_price_notification_message(self, symbol, status, timeframe):
         timeframe_str = "краткосрочном" if timeframe == '15m' else "долгосрочном"
@@ -100,28 +107,28 @@ class NotificationManager:
         pass
 
     def create_notification_message(self, symbol, status_15m, status_4h):
-        current_price = self.exchange.get_mark_price(symbol)
         market = self.exchange.get_market(symbol)
-        
+        current_price = market.get_mark_price()
+
         if current_price is not None:
             message = f"Уведомление для {symbol} (текущая цена: {current_price:.2f} USDT):\n"
         else:
             message = f"Уведомление для {symbol}:\n"
             self.logger.warning(f"Unable to fetch mark price for {symbol}")
-        
+
         if market:
             if status_15m != 'normal':
                 range_type = 'верхнем' if status_15m == 'high' else 'нижнем'
                 time_range = market.get_chart_time_range('15m')
                 message += f"Краткосрочный график ({time_range}): цена в {range_type} диапазоне\n"
-            
+
             if status_4h != 'normal':
                 range_type = 'верхнем' if status_4h == 'high' else 'нижнем'
                 time_range = market.get_chart_time_range('4h')
                 message += f"Долгосрочный график ({time_range}): цена в {range_type} диапазоне\n"
         else:
             self.logger.error(f"Market not found for symbol: {symbol}")
-        
+
         return message
 
     # Remove the create_chart method as it's now handled by the Market class

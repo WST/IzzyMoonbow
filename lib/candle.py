@@ -2,6 +2,7 @@ import pandas as pd
 from typing import Optional
 from .fvg import FVG
 
+
 class Candle:
     def __init__(self, data: pd.Series):
         self.data = data

@@ -1,5 +1,6 @@
 from .chart import Chart
 
+
 class ChartGenerator:
     def __init__(self):
         pass

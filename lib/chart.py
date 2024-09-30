@@ -4,6 +4,7 @@ from io import BytesIO
 from typing import List
 from .fvg import FVG
 
+
 class Chart:
     def __init__(self, df, title: str):
         self.df = df
@@ -17,8 +18,8 @@ class Chart:
 
         # Plot candlesticks
         self.fig, self.axes = mpf.plot(
-            self.df, 
-            type='candle', 
+            self.df,
+            type='candle',
             style=s,
             title=self.title,
             ylabel='Price',

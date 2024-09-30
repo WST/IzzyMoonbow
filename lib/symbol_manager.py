@@ -1,6 +1,7 @@
 import logging
 from lib.models import Symbol
 
+
 class SymbolManager:
     def __init__(self, session_maker):
         self.Session = session_maker

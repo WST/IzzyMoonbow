@@ -4,6 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
@@ -18,10 +19,12 @@ class User(Base):
     oi_notifications = Column(Boolean, default=True)
     notifications = relationship("NotificationHistory", back_populates="user")
 
+
 class ChatGroup(Base):
     __tablename__ = 'chats'
     id = Column(Integer, primary_key=True)
     title = Column(String(100))
+
 
 class Symbol(Base):
     __tablename__ = 'symbols'
@@ -36,6 +39,7 @@ class Symbol(Base):
     def __repr__(self):
         return f'<Symbol {self.symbol}>'
 
+
 class NotificationHistory(Base):
     __tablename__ = 'notification_history'
     id = Column(Integer, primary_key=True)
@@ -46,6 +50,7 @@ class NotificationHistory(Base):
     price_status = Column(Enum('high', 'low'), nullable=True)
     timeframe = Column(Enum('15m', '4h'), nullable=True)
     user = relationship("User", back_populates="notifications")
+
 
 # Add this line at the end of the file to export Base
 __all__ = ['Base', 'User', 'ChatGroup', 'Symbol', 'NotificationHistory']

@@ -1,12 +1,14 @@
 import logging
-import pandas as pd
-import numpy as np
-from pybit.unified_trading import HTTP
-from .market import Market
-from .exchange_updater import ExchangeUpdater
-import threading
 import queue
-import time
+import threading
+
+import numpy as np
+import pandas as pd
+from pybit.unified_trading import HTTP
+
+from .exchange_updater import ExchangeUpdater
+from .market import Market
+
 
 class Exchange:
     def __init__(self, symbol_manager, api_key: str, api_secret: str):
@@ -36,18 +38,12 @@ class Exchange:
                 if symbol not in self.markets:
                     self.markets[symbol] = Market(self, symbol)
                 self.markets[symbol].update_from_data(data)
-        
+
         self.markets = {symbol: market for symbol, market in self.markets.items() if symbol in symbols}
 
     def get_market(self, symbol: str) -> Market:
         with self.market_data_lock:
             return self.markets.get(symbol)
-
-    def get_mark_price(self, symbol: str) -> float:
-        market = self.get_market(symbol)
-        if market:
-            return market.get_mark_price()
-        return None
 
     def fetch_all_market_data(self):
         symbols = self.symbol_manager.get_symbols()

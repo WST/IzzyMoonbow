@@ -3,6 +3,7 @@ import queue
 import time
 import logging
 
+
 class ExchangeUpdater(threading.Thread):
     def __init__(self, exchange, update_interval=60):
         super().__init__()
@@ -21,7 +22,7 @@ class ExchangeUpdater(threading.Thread):
                 time.sleep(self.update_interval)
             except Exception as e:
                 self.logger.error(f"Error updating markets: {e}")
-                time.sleep(5)  # Wait a bit before retrying
+                time.sleep(5)
 
     def stop(self):
         self.logger.info("Stopping ExchangeUpdater thread")

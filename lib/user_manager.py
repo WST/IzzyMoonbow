@@ -3,6 +3,7 @@ import time
 from telegram import Update, Chat
 from lib.models import User, ChatGroup
 
+
 class UserManager:
     def __init__(self, session_maker):
         self.Session = session_maker

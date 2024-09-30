@@ -1,24 +1,23 @@
 # system imports
-import logging
 import datetime
 import json
-
-# Izzy imports
-from .exchange import Exchange
-
-# Telegram imports
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes, CallbackContext, MessageHandler, filters, CallbackQueryHandler
+import logging
 
 # Database imports
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from lib.models import Base, User, ChatGroup, Symbol
+# Telegram imports
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, ContextTypes, CallbackContext, MessageHandler, filters, \
+    CallbackQueryHandler
 
-from .notification_manager import NotificationManager
-from .user_manager import UserManager
-from .symbol_manager import SymbolManager
+from lib.models import Base
 from .config import Config
+# Izzy imports
+from .exchange import Exchange
+from .notification_manager import NotificationManager
+from .symbol_manager import SymbolManager
+from .user_manager import UserManager
+
 
 class IzzyBot:
     def __init__(self, config: Config, engine):

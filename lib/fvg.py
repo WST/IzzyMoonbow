@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .candle import Candle
 
+
 class FVG:
     def __init__(self, size: float, start_price: float, end_price: float, parent_candle: 'Candle'):
         self.size = size

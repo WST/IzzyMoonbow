@@ -6,6 +6,7 @@ from .fvg import FVG
 from .chart import Chart
 from .candle import Candle
 
+
 class Market:
     def __init__(self, exchange, symbol: str):
         self.exchange = exchange
@@ -15,8 +16,11 @@ class Market:
         self.candles_4h: List[Candle] = []
         self.logger = logging.getLogger(__name__)
         self.chart_generator = ChartGenerator()
-        self.high_threshold = None
-        self.low_threshold = None
+
+        self.high_threshold_15m = None
+        self.low_threshold_15m = None
+        self.high_threshold_4h = None
+        self.low_threshold_4h = None
 
     def update_from_data(self, data):
         self.candles_15m = self._process_candles(data['15m'])
@@ -25,15 +29,15 @@ class Market:
     def update(self, session):
         new_candles_15m = self.exchange.get_kline(self.symbol, interval="15", limit=self.max_candles)
         new_candles_4h = self.exchange.get_kline(self.symbol, interval="240", limit=self.max_candles)
-        
+
         self.candles_15m = self._process_candles(new_candles_15m)
         self.candles_4h = self._process_candles(new_candles_4h)
 
     def _process_candles(self, candles_data: pd.DataFrame) -> List[Candle]:
         candles = [Candle(row) for _, row in candles_data.iterrows()]
         for i in range(1, len(candles)):
-            candles[i].prev = candles[i-1]
-            candles[i-1].next = candles[i]
+            candles[i].prev = candles[i - 1]
+            candles[i - 1].next = candles[i]
         return candles
 
     def get_candles(self, timeframe: str) -> List[Candle]:
@@ -57,7 +61,7 @@ class Market:
         df = pd.DataFrame([c.data for c in candles])
         time_range = self.get_chart_time_range(timeframe)
         title = f"{self.symbol} - {timeframe} ({time_range})"
-        
+
         try:
             chart = self.chart_generator.generate_candlestick_chart(df, title)
             return chart
@@ -78,21 +82,33 @@ class Market:
         candles = self.get_candles(timeframe)
         if not candles:
             return 'normal'
-        
+
         current_price = candles[-1].close
         high = max(candle.high for candle in candles)
         low = min(candle.low for candle in candles)
-        
+
         range_size = high - low
-        self.high_threshold = high - 0.1 * range_size
-        self.low_threshold = low + 0.1 * range_size
-        
-        if current_price >= self.high_threshold:
-            return 'high'
-        elif current_price <= self.low_threshold:
-            return 'low'
-        else:
-            return 'normal'
+
+        if timeframe == '15m':
+            self.high_threshold_15m = high - 0.1 * range_size
+            self.low_threshold_15m = low + 0.1 * range_size
+
+            if current_price >= self.high_threshold_15m:
+                return 'high'
+            elif current_price <= self.low_threshold_15m:
+                return 'low'
+            else:
+                return 'normal'
+        elif timeframe == '4h':
+            self.high_threshold_4h = high - 0.1 * range_size
+            self.low_threshold_4h = low + 0.1 * range_size
+
+            if current_price >= self.high_threshold_4h:
+                return 'high'
+            elif current_price <= self.low_threshold_4h:
+                return 'low'
+            else:
+                return 'normal'
 
     def get_mark_price(self) -> float:
         return self.candles_15m[-1].close if self.candles_15m else None
@@ -101,18 +117,18 @@ class Market:
         candles = self.get_candles(timeframe)
         if not candles:
             return "Unknown time range"
-        
+
         start_time = candles[0].timestamp
         end_time = candles[-1].timestamp
         duration = end_time - start_time
-        
+
         days = duration.days
         hours = duration.seconds // 3600
         minutes = (duration.seconds % 3600) // 60
-        
+
         if days > 0:
-            return f"{days} days {hours} hours"
+            return f"{days} дней {hours} часов"
         elif hours > 0:
-            return f"{hours} hours {minutes} minutes"
+            return f"{hours} часов {minutes} минут"
         else:
-            return f"{minutes} minutes"
+            return f"{minutes} минут"
