@@ -1,31 +1,38 @@
+import logging
+
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 from io import BytesIO
 from typing import List
 from .fvg import FVG
+import pandas as pd
 
 
 class Chart:
-    def __init__(self, df, title: str):
-        self.df = df
+    def __init__(self, candles, title: str):
+        self.candles = candles
+        self.df = pd.DataFrame([c.data for c in candles])
         self.title = title
         self._plot_candlesticks()
 
     def _plot_candlesticks(self):
         # Define custom style
         mc = mpf.make_marketcolors(up='g', down='r', inherit=True)
-        s = mpf.make_mpf_style(marketcolors=mc, gridstyle=':', gridaxis='both')
+        style = mpf.make_mpf_style(marketcolors=mc, gridstyle=':', gridaxis='both')
+
+        ap = mpf.make_addplot(self.df['open_interest'], panel=1, type='line', ylabel='ОИ')
 
         # Plot candlesticks
         self.fig, self.axes = mpf.plot(
             self.df,
             type='candle',
-            style=s,
+            style=style,
             title=self.title,
-            ylabel='Price',
+            ylabel='Цена, USDT',
             volume=False,
             figsize=(10, 6),
             returnfig=True,
+            addplot=ap
         )
 
         # Get the main price axis
@@ -36,7 +43,7 @@ class Chart:
         self.ax.set_axisbelow(True)  # Place grid behind other elements
 
         # Customize x-axis
-        self.ax.tick_params(axis='x', rotation=45)
+        self.ax.tick_params(axis='x', rotation=0)
 
         # Adjust the layout
         self.fig.subplots_adjust(left=0.05, right=0.95, top=0.8, bottom=0.05)
@@ -45,8 +52,8 @@ class Chart:
         self.ax.axhspan(start_price, end_price, facecolor=color, alpha=alpha)
 
     def draw_fvg(self, fvg: FVG):
-        color = 'green' if fvg.is_bullish else 'red'
-        self.draw_range(fvg.start_price, fvg.end_price, color)
+        color = 'green' if fvg.is_bullish() else 'red'
+        self.draw_range(fvg.get_lower_bound(), fvg.get_upper_bound(), color, 0.1)
 
     def draw_fvgs(self, fvgs: List[FVG]):
         for fvg in fvgs:

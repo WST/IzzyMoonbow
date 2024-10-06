@@ -126,10 +126,25 @@ class IzzyBot:
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("Выберите символ и временной интервал для построения графика:", reply_markup=reply_markup)
 
+    async def fvg_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        self.user_manager.update_user_info(update)
+        symbols = self.symbol_manager.get_symbols()
+        keyboard = [
+            [
+                InlineKeyboardButton(f"{symbol} (15m)", callback_data=f"fvg_symbol_{symbol}_15m"),
+                InlineKeyboardButton(f"{symbol} (4h)", callback_data=f"fvg_symbol_{symbol}_4h")
+            ]
+            for symbol in symbols
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("Выберите символ и временной интервал для построения графика с FVG:", reply_markup=reply_markup)
+
     async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         query = update.callback_query
         await query.answer()
-        if query.data.startswith("chart_symbol_"):
+        chart_requested = query.data.startswith("chart_symbol_")
+        fvg_requested = query.data.startswith("fvg_symbol_")
+        if chart_requested or fvg_requested:
             parts = query.data.split("_")
             if len(parts) >= 4:
                 symbol, timeframe = parts[2], parts[3]
@@ -139,15 +154,19 @@ class IzzyBot:
                         await query.message.reply_text(f"Извините, не удалось найти рынок для {symbol}.")
                         return
 
-                    chart = market.get_chart(timeframe)
-                    if chart is None:
-                        await query.message.reply_text(f"Извините, не удалось создать график для {symbol} ({timeframe}). Попробуйте позже.")
-                    else:
+                    if chart_requested:
+                        chart = market.get_chart(timeframe)
                         chart_bytes = chart.save()
                         await query.message.reply_photo(photo=chart_bytes, caption=f"График для {symbol} ({timeframe})")
+
+                    if fvg_requested:
+                        chart = market.get_chart_with_fvgs(timeframe)
+                        chart_bytes = chart.save()
+                        await query.message.reply_photo(photo=chart_bytes, caption=f"Непроторгованные имбалансы для {symbol} ({timeframe})")
+
                 except Exception as e:
-                    self.logger.exception(f"Error creating chart for symbol {symbol}, timeframe: {timeframe}")
-                    await query.message.reply_text(f"Произошла ошибка при создании графика для {symbol} ({timeframe}): {str(e)}")
+                    self.logger.exception(f"Error creating chart for symbol {symbol}, timeframe: {timeframe}, error: {str(e)}")
+                    await query.message.reply_text(f"Произошла ошибка при обработке команды.")
             else:
                 await query.message.reply_text("Извините, произошла ошибка при обработке запроса.")
 
@@ -168,4 +187,5 @@ class IzzyBot:
         self.logger.info(f"Day job scheduled: {day_job}")
         
         self.application.add_handler(CommandHandler("chart", self.chart_command))
+        self.application.add_handler(CommandHandler("fvg", self.fvg_command))
         self.application.add_handler(CallbackQueryHandler(self.button_callback))

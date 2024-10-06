@@ -62,18 +62,35 @@ class Exchange:
 
     def get_kline(self, symbol: str, interval: str, limit: int):
         try:
-            response = self.session.get_kline(
+            klines = self.session.get_kline(
                 category="linear",
                 symbol=symbol,
                 interval=interval,
                 limit=limit
             )
-            kline_data = response['result']['list']
+            kline_data = klines['result']['list']
+
+            oiIntervalTime = '15min' if interval == '15' else '4h'
+            response = self.session.get_open_interest(
+                category="linear",
+                symbol=symbol,
+                intervalTime=oiIntervalTime,
+                limit=limit
+            )
+            oi_data = response['result']['list']
+
             df = pd.DataFrame(kline_data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
             df['timestamp'] = pd.to_datetime(df['timestamp'].astype(np.int64), unit='ms')
             df.set_index('timestamp', inplace=True)
             df = df.astype(float)
             df = df.sort_index()
+
+            for item in oi_data:
+                # {'openInterest': '4144631.00000000', 'timestamp': '1726617600000'}
+                timestamp = pd.to_datetime(float(item['timestamp']), unit='ms')
+                open_interest = float(item['openInterest'])
+                df.loc[timestamp, 'open_interest'] = open_interest
+
             return df
         except Exception as e:
             self.logger.error(f"Error fetching kline data for {symbol}: {str(e)}")

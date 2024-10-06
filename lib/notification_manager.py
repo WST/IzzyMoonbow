@@ -71,6 +71,7 @@ class NotificationManager:
         session.add(new_notification)
 
     async def send_price_notification(self, context, user, symbol, status, timeframe):
+        """
         market = self.exchange.get_market(symbol)
         if market:
             message = self.create_price_notification_message(symbol, status, timeframe)
@@ -86,6 +87,8 @@ class NotificationManager:
                 await context.bot.send_message(user.id, text=message)
         else:
             self.logger.error(f"Market not found for symbol: {symbol}")
+        """
+        pass
 
     def create_price_notification_message(self, symbol, status, timeframe):
         timeframe_str = "краткосрочном" if timeframe == '15m' else "долгосрочном"

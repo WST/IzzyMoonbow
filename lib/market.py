@@ -50,7 +50,7 @@ class Market:
 
     def get_fvgs(self, timeframe: str) -> List[FVG]:
         candles = self.get_candles(timeframe)
-        return [fvg for candle in candles if (fvg := candle.get_fvg()) is not None]
+        return [fvg for candle in candles if (fvg := candle.get_fvg(1.0)) is not None and not fvg.is_covered()]
 
     def get_chart(self, timeframe: str) -> Optional[Chart]:
         candles = self.get_candles(timeframe)
@@ -58,12 +58,11 @@ class Market:
             self.logger.error(f"No candle data for {self.symbol} on {timeframe} timeframe")
             return None
 
-        df = pd.DataFrame([c.data for c in candles])
         time_range = self.get_chart_time_range(timeframe)
         title = f"{self.symbol} - {timeframe} ({time_range})"
 
         try:
-            chart = self.chart_generator.generate_candlestick_chart(df, title)
+            chart = self.chart_generator.generate_candlestick_chart(candles, title)
             return chart
         except Exception as e:
             self.logger.exception(f"Error generating chart for {self.symbol}")
